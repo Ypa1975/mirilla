@@ -109,7 +109,9 @@ class MainActivity : Activity() {
         playerView.player = exoPlayer
 
         val mediaSource = RtspMediaSource.Factory()
-            .setForceUseRtpTcp(true) // TCP es más estable en redes WiFi con pérdidas
+            // No forzamos TCP: muchos servidores RTSP caseros solo
+            // funcionan bien con UDP (el modo por defecto), que es lo
+            // que prueba VLC primero.
             .createMediaSource(MediaItem.fromUri(url))
 
         exoPlayer.addListener(object : Player.Listener {
@@ -127,7 +129,9 @@ class MainActivity : Activity() {
             override fun onPlayerError(error: PlaybackException) {
                 Log.e(TAG, "Error de reproducción: ${error.message}", error)
                 statusText.visibility = View.VISIBLE
-                statusText.text = "Sin señal. Reintentando..."
+                // Mostramos el mensaje real del error para poder
+                // diagnosticar sin necesitar el ordenador conectado.
+                statusText.text = "Sin señal: ${error.message}\nReintentando..."
                 scheduleRetry(url)
             }
         })
