@@ -1,0 +1,51 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'com.example.rtspviewer'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.example.rtspviewer"
+        // minSdk 19 = Android 4.4 (KitKat). Baja este numero si tu telefono
+        // es aun mas antiguo (ExoPlayer 2.19.x soporta hasta minSdk 16).
+        minSdk 19
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    // No usamos AppCompat/Material a proposito: mantiene el APK pequeño
+    // y arranca mas rapido en hardware antiguo.
+    buildFeatures {
+        viewBinding false
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.9.0'
+
+    // ExoPlayer clasico (no Media3) por compatibilidad con minSdk bajos.
+    implementation 'com.google.android.exoplayer:exoplayer-core:2.19.1'
+    implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
+    implementation 'com.google.android.exoplayer:extension-rtsp:2.19.1'
+}
