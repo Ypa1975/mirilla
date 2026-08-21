@@ -7,9 +7,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.rtspviewer"
-        // minSdk 19 = Android 4.4 (KitKat). Baja este numero si tu telefono
-        // es aun mas antiguo (ExoPlayer 2.19.x soporta hasta minSdk 16).
-        minSdk 19
+        minSdk 21
         targetSdk 33
         versionCode 1
         versionName "1.0"
@@ -34,8 +32,6 @@ android {
         jvmTarget = '1.8'
     }
 
-    // No usamos AppCompat/Material a proposito: mantiene el APK pequeño
-    // y arranca mas rapido en hardware antiguo.
     buildFeatures {
         viewBinding false
     }
@@ -44,8 +40,7 @@ android {
 dependencies {
     implementation 'androidx.core:core-ktx:1.9.0'
 
-    // ExoPlayer clasico (no Media3) por compatibilidad con minSdk bajos.
-    implementation 'com.google.android.exoplayer:exoplayer-core:2.19.1'
-    implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
-    implementation 'com.google.android.exoplayer:extension-rtsp:2.19.1'
+    implementation 'androidx.media3:media3-exoplayer:1.3.1'
+    implementation 'androidx.media3:media3-exoplayer-rtsp:1.3.1'
+    implementation 'androidx.media3:media3-ui:1.3.1'
 }
