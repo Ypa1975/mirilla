@@ -50,18 +50,17 @@ Para instalarlo necesitas firmarlo (o usa `assembleDebug` para probar rápido
 sin firma, generando `app-debug.apk`, instalable directamente con
 `adb install app-debug.apk`).
 
-## Ajustar la compatibilidad con teléfonos muy antiguos
+## Sobre la librería usada (Media3)
 
-En `app/build.gradle`, el `minSdk` está puesto en **19** (Android 4.4, KitKat).
-Si tu teléfono es aún más viejo (Android 4.1–4.3, Jelly Bean), puedes bajarlo
-hasta `minSdk 16`, que es el mínimo soportado por ExoPlayer 2.19.x:
+La app usa **Media3** (androidx.media3), el sucesor moderno de ExoPlayer.
+Se cambió desde el ExoPlayer2 "clásico" porque su extensión RTSP nunca se
+publicó como artefacto en Maven Central/Google (solo se podía compilar desde
+el código fuente), lo que rompía la compilación en GitHub Actions.
 
-```gradle
-defaultConfig {
-    minSdk 16
-    ...
-}
-```
+Esto implica que el `minSdk` mínimo es **21** (Android 5.0, Lollipop) — es la
+exigencia de Media3, no se puede bajar más manteniendo esta librería. Si
+necesitas soportar Android 4.x, habría que compilar ExoPlayer2 clásico desde
+el código fuente de GitHub, mucho más complicado de mantener.
 
 ## Primer uso
 

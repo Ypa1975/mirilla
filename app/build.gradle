@@ -7,10 +7,20 @@ android {
 
     defaultConfig {
         applicationId "com.example.rtspviewer"
+        // minSdk 21 = Android 5.0 (Lollipop). Es el minimo que exige Media3
+        // (la extension RTSP del ExoPlayer "clasico" nunca se publico en
+        // Maven, por eso usamos Media3 en su lugar).
         minSdk 21
         targetSdk 34
         versionCode 1
         versionName "1.0"
+
+        // libVLC trae librerias nativas para 4 arquitecturas; nos
+        // quedamos solo con las dos que cubren practicamente cualquier
+        // telefono Android real (viejo o nuevo) para no inflar el APK.
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
     }
 
     buildTypes {
@@ -32,6 +42,8 @@ android {
         jvmTarget = '1.8'
     }
 
+    // No usamos AppCompat/Material a proposito: mantiene el APK pequeño
+    // y arranca mas rapido en hardware antiguo.
     buildFeatures {
         viewBinding false
     }
@@ -40,7 +52,8 @@ android {
 dependencies {
     implementation 'androidx.core:core-ktx:1.9.0'
 
-    implementation 'androidx.media3:media3-exoplayer:1.3.1'
-    implementation 'androidx.media3:media3-exoplayer-rtsp:1.3.1'
-    implementation 'androidx.media3:media3-ui:1.3.1'
+    // libVLC: mismo motor que usa la app VLC de escritorio/movil. Mucho
+    // mas tolerante con servidores RTSP "caseros" o no estandar que
+    // Media3/ExoPlayer, que es mas estricto.
+    implementation 'org.videolan.android:libvlc-all:3.6.3'
 }

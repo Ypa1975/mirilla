@@ -3,34 +3,32 @@ package com.example.rtspviewer
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
 import android.util.Log
-import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.rtsp.RtspMediaSource
-import androidx.media3.ui.PlayerView
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.Media
+import org.videolan.libvlc.MediaPlayer
+import org.videolan.libvlc.util.VLCVideoLayout
 
 /**
- * Reproductor RTSP minimalista y a pantalla completa.
+ * Reproductor RTSP minimalista y a pantalla completa, usando libVLC
+ * (el mismo motor que usa la app VLC). Se eligio sobre Media3/ExoPlayer
+ * porque tolera mucho mejor servidores RTSP no estandar o "caseros".
  *
  * - Guarda la URL RTSP en SharedPreferences (mantén pulsado en la pantalla
  *   para cambiarla).
  * - Reconecta automáticamente si se corta la señal o falla la conexión.
  * - Modo inmersivo: oculta barra de estado y de navegación.
  */
-@OptIn(UnstableApi::class)
 class MainActivity : Activity() {
 
     companion object {
@@ -44,8 +42,9 @@ class MainActivity : Activity() {
         private const val DEFAULT_URL = "rtsp://192.168.1.146:8554/mirilla"
     }
 
-    private var player: ExoPlayer? = null
-    private lateinit var playerView: PlayerView
+    private var libVLC: LibVLC? = null
+    private var mediaPlayer: MediaPlayer? = null
+    private lateinit var videoLayout: VLCVideoLayout
     private lateinit var statusText: TextView
     private val retryHandler = Handler(Looper.getMainLooper())
     private var retryRunnable: Runnable? = null
@@ -57,10 +56,10 @@ class MainActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContentView(R.layout.activity_main)
-        playerView = findViewById(R.id.player_view)
+        videoLayout = findViewById(R.id.video_layout)
         statusText = findViewById(R.id.status_text)
 
-        playerView.setOnLongClickListener {
+        videoLayout.setOnLongClickListener {
             showUrlDialog()
             true
         }
@@ -89,12 +88,6 @@ class MainActivity : Activity() {
         if (hasFocus) hideSystemUi()
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // Doble función del botón "menú"/volumen no se usa; evita salidas
-        // accidentales con back en pantallas táctiles antiguas si se desea.
-        return super.onKeyDown(keyCode, event)
-    }
-
     // ---------- Reproducción ----------
 
     private fun startPlayback(url: String) {
@@ -104,41 +97,51 @@ class MainActivity : Activity() {
         statusText.visibility = View.VISIBLE
         statusText.text = "Conectando a la cámara..."
 
-        val exoPlayer = ExoPlayer.Builder(this).build()
-        player = exoPlayer
-        playerView.player = exoPlayer
+        val options = arrayListOf(
+            "--no-drop-late-frames",
+            "--no-skip-frames",
+            "--rtsp-caching=1000",
+            "--network-caching=1000"
+        )
 
-        val mediaSource = RtspMediaSource.Factory()
-            // No forzamos TCP: muchos servidores RTSP caseros solo
-            // funcionan bien con UDP (el modo por defecto), que es lo
-            // que prueba VLC primero.
-            .createMediaSource(MediaItem.fromUri(url))
+        val vlc = LibVLC(this, options)
+        libVLC = vlc
 
-        exoPlayer.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                when (state) {
-                    Player.STATE_READY -> statusText.visibility = View.GONE
-                    Player.STATE_BUFFERING -> statusText.apply {
-                        visibility = View.VISIBLE
-                        text = "Buffering..."
+        val player = MediaPlayer(vlc)
+        mediaPlayer = player
+        player.attachViews(videoLayout, null, false, false)
+
+        val media = Media(vlc, Uri.parse(url))
+        media.setHWDecoderEnabled(true, false)
+        player.media = media
+        media.release()
+
+        player.setEventListener { event ->
+            when (event.type) {
+                MediaPlayer.Event.Playing -> statusText.visibility = View.GONE
+                MediaPlayer.Event.Buffering -> {
+                    if (event.buffering < 100f) {
+                        statusText.visibility = View.VISIBLE
+                        statusText.text = "Buffering ${event.buffering.toInt()}%..."
                     }
-                    else -> {}
                 }
+                MediaPlayer.Event.EncounteredError -> {
+                    Log.e(TAG, "Error de reproducción libVLC")
+                    statusText.visibility = View.VISIBLE
+                    statusText.text = "Sin señal (error de reproducción)\nReintentando..."
+                    scheduleRetry(url)
+                }
+                MediaPlayer.Event.EndReached -> {
+                    Log.w(TAG, "Stream finalizado inesperadamente")
+                    statusText.visibility = View.VISIBLE
+                    statusText.text = "Sin señal (stream finalizado)\nReintentando..."
+                    scheduleRetry(url)
+                }
+                else -> {}
             }
+        }
 
-            override fun onPlayerError(error: PlaybackException) {
-                Log.e(TAG, "Error de reproducción: ${error.message}", error)
-                statusText.visibility = View.VISIBLE
-                // Mostramos el mensaje real del error para poder
-                // diagnosticar sin necesitar el ordenador conectado.
-                statusText.text = "Sin señal: ${error.message}\nReintentando..."
-                scheduleRetry(url)
-            }
-        })
-
-        exoPlayer.setMediaSource(mediaSource)
-        exoPlayer.playWhenReady = true
-        exoPlayer.prepare()
+        player.play()
     }
 
     private fun scheduleRetry(url: String) {
@@ -154,9 +157,14 @@ class MainActivity : Activity() {
     }
 
     private fun releasePlayer() {
-        player?.release()
-        player = null
-        playerView.player = null
+        mediaPlayer?.let { player ->
+            player.stop()
+            player.detachViews()
+            player.release()
+        }
+        mediaPlayer = null
+        libVLC?.release()
+        libVLC = null
     }
 
     // ---------- Configuración de la URL ----------
