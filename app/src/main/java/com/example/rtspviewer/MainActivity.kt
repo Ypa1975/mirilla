@@ -14,13 +14,13 @@ import android.view.WindowManager
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import com.google.android.exoplayer2.ExoPlaybackException
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.PlaybackException
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.source.rtsp.RtspMediaSource
-import com.google.android.exoplayer2.ui.PlayerView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.rtsp.RtspMediaSource
+import androidx.media3.ui.PlayerView
 
 /**
  * Reproductor RTSP minimalista y a pantalla completa.
@@ -30,6 +30,7 @@ import com.google.android.exoplayer2.ui.PlayerView
  * - Reconecta automáticamente si se corta la señal o falla la conexión.
  * - Modo inmersivo: oculta barra de estado y de navegación.
  */
+@OptIn(UnstableApi::class)
 class MainActivity : Activity() {
 
     companion object {
